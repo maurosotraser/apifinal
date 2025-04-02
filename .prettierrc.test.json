@@ -1,0 +1,18 @@
+{
+  "extends": "./.prettierrc",
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts"],
+      "options": {
+        "printWidth": 120,
+        "singleQuote": true,
+        "trailingComma": "es5",
+        "semi": true,
+        "tabWidth": 2,
+        "useTabs": false,
+        "bracketSpacing": true,
+        "arrowParens": "avoid"
+      }
+    }
+  ]
+} 
