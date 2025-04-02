@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import { TokenController } from '../controllers/token.controller';
-import { authenticateToken } from '../middleware/auth.middleware';
-import { checkRole } from '../middleware/role.middleware';
 
 const router = Router();
 const tokenController = new TokenController();
@@ -36,7 +34,7 @@ const tokenController = new TokenController();
  *       500:
  *         description: Internal server error
  */
-router.post('/', authenticateToken, checkRole('admin'), tokenController.createToken);
+router.post('/', tokenController.createToken.bind(tokenController));
 
 /**
  * @swagger
@@ -67,7 +65,7 @@ router.post('/', authenticateToken, checkRole('admin'), tokenController.createTo
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', authenticateToken, tokenController.getTokenById);
+router.get('/:id', tokenController.getTokenById.bind(tokenController));
 
 /**
  * @swagger
@@ -98,7 +96,7 @@ router.get('/:id', authenticateToken, tokenController.getTokenById);
  *       500:
  *         description: Internal server error
  */
-router.get('/value/:token', authenticateToken, tokenController.getTokenByValue);
+router.get('/value/:token', tokenController.getTokenByValue.bind(tokenController));
 
 /**
  * @swagger
@@ -154,7 +152,7 @@ router.get('/value/:token', authenticateToken, tokenController.getTokenByValue);
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', authenticateToken, checkRole('admin'), tokenController.updateToken);
+router.put('/:id', tokenController.updateToken.bind(tokenController));
 
 /**
  * @swagger
@@ -183,7 +181,7 @@ router.put('/:id', authenticateToken, checkRole('admin'), tokenController.update
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', authenticateToken, checkRole('admin'), tokenController.deleteToken);
+router.delete('/:id', tokenController.deleteToken.bind(tokenController));
 
 /**
  * @swagger
@@ -203,7 +201,7 @@ router.delete('/:id', authenticateToken, checkRole('admin'), tokenController.del
  *       500:
  *         description: Internal server error
  */
-router.delete('/expired', authenticateToken, checkRole('admin'), tokenController.deleteExpiredTokens);
+router.delete('/expired', tokenController.deleteExpiredTokens.bind(tokenController));
 
 /**
  * @swagger
@@ -236,7 +234,7 @@ router.delete('/expired', authenticateToken, checkRole('admin'), tokenController
  *       500:
  *         description: Internal server error
  */
-router.get('/user/:userId', authenticateToken, tokenController.getTokensByUser);
+router.get('/user/:userId', tokenController.getTokensByUser.bind(tokenController));
 
 /**
  * @swagger
@@ -272,6 +270,6 @@ router.get('/user/:userId', authenticateToken, tokenController.getTokensByUser);
  *       500:
  *         description: Internal server error
  */
-router.get('/validate/:token', authenticateToken, tokenController.validateToken);
+router.get('/validate/:token', tokenController.validateToken.bind(tokenController));
 
 export default router; 

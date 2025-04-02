@@ -4,8 +4,7 @@ import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import { errorHandler } from './middleware/error.middleware';
-import authRoutes from './routes/auth.routes';
-import userRoutes from './routes/user.routes';
+import routes from './routes';
 
 const app = express();
 
@@ -25,7 +24,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
+        url: 'http://localhost:3001',
         description: 'Development server'
       }
     ]
@@ -37,8 +36,7 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api', routes);
 
 // Error handling
 app.use(errorHandler);

@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { MembershipController } from '../controllers/membership.controller';
-import { authenticateToken, checkRole } from '../middleware/auth.middleware';
 
 const router = Router();
 const membershipController = new MembershipController();
@@ -8,34 +7,77 @@ const membershipController = new MembershipController();
 /**
  * @swagger
  * /api/memberships:
+ *   get:
+ *     summary: Get all memberships
+ *     tags: [Memberships]
+ *     responses:
+ *       200:
+ *         description: List of memberships
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Membership'
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/', membershipController.getAllMemberships.bind(membershipController));
+
+/**
+ * @swagger
+ * /api/memberships:
  *   post:
  *     summary: Create a new membership
  *     tags: [Memberships]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Membership'
+ *             type: object
+ *             required:
+ *               - id_usuario
+ *               - id_propietario
+ *               - ind_membresia
+ *               - fecha_vigencia
+ *             properties:
+ *               id_usuario:
+ *                 type: number
+ *               id_propietario:
+ *                 type: number
+ *               ind_membresia:
+ *                 type: string
+ *               fecha_vigencia:
+ *                 type: string
+ *                 format: date-time
+ *               inserted_by:
+ *                 type: string
  *     responses:
  *       201:
  *         description: Membership created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Membership'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   $ref: '#/components/schemas/Membership'
  *       400:
  *         description: Invalid input data
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin role required
  *       500:
  *         description: Internal server error
  */
-router.post('/', authenticateToken, checkRole(['admin']), membershipController.createMembership);
+router.post('/', membershipController.createMembership.bind(membershipController));
 
 /**
  * @swagger
@@ -43,30 +85,31 @@ router.post('/', authenticateToken, checkRole(['admin']), membershipController.c
  *   get:
  *     summary: Get a membership by ID
  *     tags: [Memberships]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Membership ID
  *     responses:
  *       200:
- *         description: Membership found
+ *         description: Membership details
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Membership'
- *       401:
- *         description: Unauthorized
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   $ref: '#/components/schemas/Membership'
  *       404:
  *         description: Membership not found
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', authenticateToken, membershipController.getMembershipById);
+router.get('/:id', membershipController.getMembershipById.bind(membershipController));
 
 /**
  * @swagger
@@ -74,15 +117,12 @@ router.get('/:id', authenticateToken, membershipController.getMembershipById);
  *   put:
  *     summary: Update a membership
  *     tags: [Memberships]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Membership ID
  *     requestBody:
  *       required: true
  *       content:
@@ -91,11 +131,14 @@ router.get('/:id', authenticateToken, membershipController.getMembershipById);
  *             type: object
  *             properties:
  *               id_usuario:
- *                 type: integer
+ *                 type: number
  *               id_propietario:
- *                 type: integer
+ *                 type: number
  *               ind_membresia:
  *                 type: string
+ *               fecha_vigencia:
+ *                 type: string
+ *                 format: date-time
  *               updated_by:
  *                 type: string
  *     responses:
@@ -104,19 +147,21 @@ router.get('/:id', authenticateToken, membershipController.getMembershipById);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Membership'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   $ref: '#/components/schemas/Membership'
  *       400:
  *         description: Invalid input data
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin role required
  *       404:
  *         description: Membership not found
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', authenticateToken, checkRole(['admin']), membershipController.updateMembership);
+router.put('/:id', membershipController.updateMembership.bind(membershipController));
 
 /**
  * @swagger
@@ -124,28 +169,32 @@ router.put('/:id', authenticateToken, checkRole(['admin']), membershipController
  *   delete:
  *     summary: Delete a membership
  *     tags: [Memberships]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Membership ID
  *     responses:
- *       204:
+ *       200:
  *         description: Membership deleted successfully
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin role required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Membresía eliminada correctamente
  *       404:
  *         description: Membership not found
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', authenticateToken, checkRole(['admin']), membershipController.deleteMembership);
+router.delete('/:id', membershipController.deleteMembership.bind(membershipController));
 
 /**
  * @swagger
@@ -178,7 +227,7 @@ router.delete('/:id', authenticateToken, checkRole(['admin']), membershipControl
  *       500:
  *         description: Internal server error
  */
-router.get('/user/:userId', authenticateToken, membershipController.getMembershipsByUser);
+router.get('/user/:userId', membershipController.getMembershipsByUser.bind(membershipController));
 
 /**
  * @swagger
@@ -211,7 +260,7 @@ router.get('/user/:userId', authenticateToken, membershipController.getMembershi
  *       500:
  *         description: Internal server error
  */
-router.get('/owner/:ownerId', authenticateToken, membershipController.getMembershipsByOwner);
+router.get('/owner/:ownerId', membershipController.getMembershipsByOwner.bind(membershipController));
 
 /**
  * @swagger
@@ -246,7 +295,7 @@ router.get('/owner/:ownerId', authenticateToken, membershipController.getMembers
  *       500:
  *         description: Internal server error
  */
-router.post('/role', authenticateToken, checkRole(['admin']), membershipController.addRoleToMembership);
+router.post('/role', membershipController.addRoleToMembership.bind(membershipController));
 
 /**
  * @swagger
@@ -281,7 +330,7 @@ router.post('/role', authenticateToken, checkRole(['admin']), membershipControll
  *       500:
  *         description: Internal server error
  */
-router.delete('/role/:membershipId/:roleId', authenticateToken, checkRole(['admin']), membershipController.removeRoleFromMembership);
+router.delete('/role/:membershipId/:roleId', membershipController.removeRoleFromMembership.bind(membershipController));
 
 /**
  * @swagger
@@ -314,7 +363,7 @@ router.delete('/role/:membershipId/:roleId', authenticateToken, checkRole(['admi
  *       500:
  *         description: Internal server error
  */
-router.get('/:membershipId/roles', authenticateToken, membershipController.getMembershipRoles);
+router.get('/:membershipId/roles', membershipController.getMembershipRoles.bind(membershipController));
 
 /**
  * @swagger
@@ -338,6 +387,6 @@ router.get('/:membershipId/roles', authenticateToken, membershipController.getMe
  *       500:
  *         description: Internal server error
  */
-router.get('/active', authenticateToken, membershipController.getActiveMemberships);
+router.get('/active', membershipController.getActiveMemberships.bind(membershipController));
 
 export default router; 

@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
-import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = Router();
 const authController = new AuthController();
@@ -107,8 +106,6 @@ router.post('/register', authController.register.bind(authController));
  *   get:
  *     summary: Get current user information
  *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Current user information
@@ -116,11 +113,9 @@ router.post('/register', authController.register.bind(authController));
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/User'
- *       401:
- *         description: Unauthorized
  *       500:
  *         description: Internal server error
  */
-router.get('/me', authenticateToken, authController.getCurrentUser.bind(authController));
+router.get('/me', authController.getCurrentUser.bind(authController));
 
 export default router; 

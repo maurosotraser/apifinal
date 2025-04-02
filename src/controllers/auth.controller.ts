@@ -52,7 +52,7 @@ export class AuthController {
     }
   }
 
-  async getCurrentUser(req: Request, res: Response): Promise<Response> {
+  async getCurrentUser(req: Request & { user?: User }, res: Response): Promise<Response> {
     try {
       const userId = req.user?.id_usuario;
       if (!userId) {

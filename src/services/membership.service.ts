@@ -1,61 +1,153 @@
 import { BaseService } from './base.service';
 import { Membership, RoleMembership } from '../types/models';
+import sql from 'mssql';
+import { pool } from '../config/database';
 
 export class MembershipService extends BaseService {
-  async createMembership(membershipData: Omit<Membership, 'id_membresia' | 'inserted_at' | 'updated_at'>): Promise<Membership> {
-    const query = `
-      INSERT INTO seguridad.membresias (
-        id_usuario, id_propietario, ind_membresia, fecha_vigencia, inserted_by
-      )
-      OUTPUT INSERTED.*
-      VALUES (
-        @id_usuario, @id_propietario, @ind_membresia, @fecha_vigencia, @inserted_by
-      )
-    `;
-
-    const result = await this.executeQuery<Membership>(query, membershipData);
-    return result[0];
+  async getAllMemberships(): Promise<Membership[]> {
+    try {
+      const result = await pool.request()
+        .query('SELECT * FROM [sotraser-bd-dev].seguridad.membresias');
+      return result.recordset;
+    } catch (error) {
+      console.error('Error in getAllMemberships:', error);
+      throw error;
+    }
   }
 
   async getMembershipById(id: number): Promise<Membership | null> {
-    const query = `
-      SELECT * FROM seguridad.membresias
-      WHERE id_membresia = @id
-    `;
+    try {
+      const result = await pool.request()
+        .input('id', sql.Int, id)
+        .query('SELECT * FROM [sotraser-bd-dev].seguridad.membresias WHERE id_membresia = @id');
+      
+      return result.recordset[0] || null;
+    } catch (error) {
+      console.error('Error in getMembershipById:', error);
+      throw error;
+    }
+  }
 
-    const result = await this.executeQuery<Membership>(query, { id });
-    return result[0] || null;
+  async createMembership(membershipData: Omit<Membership, 'id_membresia'>): Promise<Membership> {
+    try {
+      // Primero obtenemos el siguiente valor de la secuencia
+      const sequenceResult = await pool.request()
+        .query('SELECT NEXT VALUE FOR [sotraser-bd-dev].seguridad.SQ_MEMBRESIAS AS nextValue');
+      
+      const nextId = sequenceResult.recordset[0].nextValue;
+      
+      // Luego insertamos con el ID obtenido
+      const result = await pool.request()
+        .input('id_membresia', sql.Int, nextId)
+        .input('id_usuario', sql.Int, membershipData.id_usuario)
+        .input('id_propietario', sql.Int, membershipData.id_propietario)
+        .input('ind_membresia', sql.NVarChar, membershipData.ind_membresia)
+        .input('fecha_vigencia', sql.DateTime, membershipData.fecha_vigencia)
+        .input('inserted_by', sql.NVarChar, membershipData.inserted_by)
+        .input('inserted_at', sql.DateTime, membershipData.inserted_at)
+        .input('updated_by', sql.NVarChar, membershipData.updated_by)
+        .input('updated_at', sql.DateTime, membershipData.updated_at)
+        .query(`
+          INSERT INTO [sotraser-bd-dev].seguridad.membresias
+          (id_membresia, id_usuario, id_propietario, ind_membresia, fecha_vigencia, inserted_by, inserted_at, updated_by, updated_at)
+          OUTPUT INSERTED.*
+          VALUES
+          (@id_membresia, @id_usuario, @id_propietario, @ind_membresia, @fecha_vigencia, @inserted_by, @inserted_at, @updated_by, @updated_at)
+        `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error in createMembership:', error);
+      throw error;
+    }
   }
 
   async updateMembership(id: number, membershipData: Partial<Membership>): Promise<Membership | null> {
-    const query = `
-      UPDATE seguridad.membresias
-      SET 
-        ind_membresia = COALESCE(@ind_membresia, ind_membresia),
-        fecha_vigencia = COALESCE(@fecha_vigencia, fecha_vigencia),
-        updated_by = @updated_by,
-        updated_at = GETDATE()
-      OUTPUT INSERTED.*
-      WHERE id_membresia = @id
-    `;
+    try {
+      let updateQuery = 'UPDATE [sotraser-bd-dev].seguridad.membresias SET ';
+      const inputs: any[] = [];
+      const values: any[] = [];
 
-    const result = await this.executeQuery<Membership>(query, {
-      id,
-      ...membershipData,
-      updated_by: membershipData.updated_by || 'system'
-    });
+      if (membershipData.id_usuario !== undefined) {
+        inputs.push('id_usuario');
+        values.push(membershipData.id_usuario);
+      }
 
-    return result[0] || null;
+      if (membershipData.id_propietario !== undefined) {
+        inputs.push('id_propietario');
+        values.push(membershipData.id_propietario);
+      }
+
+      if (membershipData.ind_membresia) {
+        inputs.push('ind_membresia');
+        values.push(membershipData.ind_membresia);
+      }
+
+      if (membershipData.fecha_vigencia) {
+        inputs.push('fecha_vigencia');
+        values.push(membershipData.fecha_vigencia);
+      }
+
+      if (membershipData.updated_by) {
+        inputs.push('updated_by');
+        values.push(membershipData.updated_by);
+      }
+
+      if (membershipData.updated_at) {
+        inputs.push('updated_at');
+        values.push(membershipData.updated_at);
+      }
+
+      if (inputs.length === 0) {
+        return null;
+      }
+
+      const request = pool.request();
+      request.input('id', sql.Int, id);
+
+      inputs.forEach((input, index) => {
+        updateQuery += `${input} = @${input}, `;
+        if (input === 'fecha_vigencia' || input === 'updated_at') {
+          request.input(input, sql.DateTime, values[index]);
+        } else if (input === 'id_usuario' || input === 'id_propietario') {
+          request.input(input, sql.Int, values[index]);
+        } else {
+          request.input(input, sql.NVarChar, values[index]);
+        }
+      });
+
+      updateQuery = updateQuery.slice(0, -2) + ' WHERE id_membresia = @id';
+
+      const result = await request.query(updateQuery);
+
+      if (result.rowsAffected[0] === 0) {
+        return null;
+      }
+
+      return this.getMembershipById(id);
+    } catch (error) {
+      console.error('Error in updateMembership:', error);
+      throw error;
+    }
   }
 
   async deleteMembership(id: number): Promise<boolean> {
-    const query = `
-      DELETE FROM seguridad.membresias
-      WHERE id_membresia = @id
-    `;
-
-    const result = await this.executeQuery<{ affectedRows: number }>(query, { id });
-    return result[0]?.affectedRows > 0;
+    try {
+      const result = await pool.request()
+        .input('id', sql.Int, id)
+        .input('updated_at', sql.DateTime, new Date())
+        .query(`
+          UPDATE [sotraser-bd-dev].seguridad.membresias
+          SET ind_membresia = 'B',
+              updated_at = @updated_at
+          WHERE id_membresia = @id
+        `);
+      
+      return result.rowsAffected[0] > 0;
+    } catch (error) {
+      console.error('Error in deleteMembership:', error);
+      throw error;
+    }
   }
 
   async getMembershipsByUser(userId: number): Promise<Membership[]> {

@@ -10,10 +10,8 @@ import auditRoutes from './audit.routes';
 
 const router = Router();
 
-// Auth routes
+// Todas las rutas son públicas
 router.use('/auth', authRoutes);
-
-// Protected routes
 router.use('/users', userRoutes);
 router.use('/roles', roleRoutes);
 router.use('/actions', actionRoutes);

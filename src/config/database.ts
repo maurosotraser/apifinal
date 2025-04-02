@@ -21,16 +21,5 @@ const config: sql.config = {
 
 const pool = new sql.ConnectionPool(config);
 
-// Solo intentar conectar si no estamos en modo test
-if (process.env.NODE_ENV !== 'test') {
-  pool.connect()
-    .then(() => {
-      console.log('Database connection successful');
-    })
-    .catch(err => {
-      console.error('Error connecting to the database:', err);
-      process.exit(1);
-    });
-}
-
+// Exportamos la pool sin intentar conectar aquí
 export { pool }; 

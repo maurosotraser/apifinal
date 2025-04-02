@@ -24,7 +24,7 @@ export class RoleService extends BaseService {
   async getRoleById(id: number): Promise<Role | null> {
     const query = `
       SELECT * FROM seguridad.roles
-      WHERE id_rol = @id
+      WHERE id_rol = @id AND (deleted IS NULL OR deleted = 0)
     `;
 
     const result = await this.executeQuery<Role>(query, { id });
@@ -53,7 +53,11 @@ export class RoleService extends BaseService {
 
   async deleteRole(id: number): Promise<boolean> {
     const query = `
-      DELETE FROM seguridad.roles
+      UPDATE seguridad.roles
+      SET 
+        deleted = 1,
+        updated_at = GETDATE(),
+        updated_by = 'system'
       WHERE id_rol = @id
     `;
 
@@ -64,7 +68,7 @@ export class RoleService extends BaseService {
   async getRoleSubs(roleId: number): Promise<RoleSub[]> {
     const query = `
       SELECT * FROM seguridad.roles_sub
-      WHERE id_rol = @roleId
+      WHERE id_rol = @roleId AND (deleted IS NULL OR deleted = 0)
     `;
 
     return this.executeQuery<RoleSub>(query, { roleId });
@@ -110,7 +114,11 @@ export class RoleService extends BaseService {
 
   async deleteRoleSub(id: number): Promise<boolean> {
     const query = `
-      DELETE FROM seguridad.roles_sub
+      UPDATE seguridad.roles_sub
+      SET 
+        deleted = 1,
+        updated_at = GETDATE(),
+        updated_by = 'system'
       WHERE id_rol_sub = @id
     `;
 

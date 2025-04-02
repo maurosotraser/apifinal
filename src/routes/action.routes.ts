@@ -1,152 +1,14 @@
 import { Router } from 'express';
 import { ActionController } from '../controllers/action.controller';
-import { authenticateToken, checkRole } from '../middleware/auth.middleware';
 
 const router = Router();
 const actionController = new ActionController();
 
-/**
- * @swagger
- * /api/actions:
- *   post:
- *     summary: Create a new action
- *     tags: [Actions]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Action'
- *     responses:
- *       201:
- *         description: Action created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Action'
- *       400:
- *         description: Invalid input data
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin role required
- *       500:
- *         description: Internal server error
- */
-router.post('/', authenticateToken, checkRole(['ADMIN']), actionController.createAction.bind(actionController));
-
-/**
- * @swagger
- * /api/actions/{id}:
- *   get:
- *     summary: Get an action by ID
- *     tags: [Actions]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Action ID
- *     responses:
- *       200:
- *         description: Action found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Action'
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Action not found
- *       500:
- *         description: Internal server error
- */
-router.get('/:id', authenticateToken, actionController.getActionById.bind(actionController));
-
-/**
- * @swagger
- * /api/actions/{id}:
- *   put:
- *     summary: Update an action
- *     tags: [Actions]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Action ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nombre:
- *                 type: string
- *               cod_tipo:
- *                 type: string
- *               htmlcode:
- *                 type: string
- *                 nullable: true
- *               updated_by:
- *                 type: string
- *     responses:
- *       200:
- *         description: Action updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Action'
- *       400:
- *         description: Invalid input data
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin role required
- *       404:
- *         description: Action not found
- *       500:
- *         description: Internal server error
- */
-router.put('/:id', authenticateToken, checkRole(['ADMIN']), actionController.updateAction.bind(actionController));
-
-/**
- * @swagger
- * /api/actions/{id}:
- *   delete:
- *     summary: Delete an action
- *     tags: [Actions]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Action ID
- *     responses:
- *       204:
- *         description: Action deleted successfully
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin role required
- *       404:
- *         description: Action not found
- *       500:
- *         description: Internal server error
- */
-router.delete('/:id', authenticateToken, checkRole(['ADMIN']), actionController.deleteAction.bind(actionController));
+// Rutas públicas (sin autenticación)
+router.get('/:id', actionController.getActionById.bind(actionController));
+router.post('/', actionController.createAction.bind(actionController));
+router.put('/:id', actionController.updateAction.bind(actionController));
+router.delete('/:id', actionController.deleteAction.bind(actionController));
 
 /**
  * @swagger
@@ -173,7 +35,7 @@ router.delete('/:id', authenticateToken, checkRole(['ADMIN']), actionController.
  *       500:
  *         description: Internal server error
  */
-router.get('/membership/:membershipId', authenticateToken, actionController.getActionsByMembership.bind(actionController));
+router.get('/membership/:membershipId', actionController.getActionsByMembership.bind(actionController));
 
 /**
  * @swagger
@@ -210,7 +72,7 @@ router.get('/membership/:membershipId', authenticateToken, actionController.getA
  *       500:
  *         description: Internal server error
  */
-router.post('/membership', authenticateToken, checkRole(['ADMIN']), actionController.addActionToMembership.bind(actionController));
+router.post('/membership', actionController.addActionToMembership.bind(actionController));
 
 /**
  * @swagger
@@ -245,7 +107,7 @@ router.post('/membership', authenticateToken, checkRole(['ADMIN']), actionContro
  *       500:
  *         description: Internal server error
  */
-router.delete('/membership/:membershipId/:actionId', authenticateToken, checkRole(['ADMIN']), actionController.removeActionFromMembership.bind(actionController));
+router.delete('/membership/:membershipId/:actionId', actionController.removeActionFromMembership.bind(actionController));
 
 /**
  * @swagger
@@ -270,6 +132,6 @@ router.delete('/membership/:membershipId/:actionId', authenticateToken, checkRol
  *       500:
  *         description: Internal server error
  */
-router.get('/type/:codTipo', authenticateToken, actionController.getActionsByType.bind(actionController));
+router.get('/type/:codTipo', actionController.getActionsByType.bind(actionController));
 
 export default router; 
