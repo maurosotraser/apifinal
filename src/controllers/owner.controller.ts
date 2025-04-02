@@ -1,98 +1,102 @@
 import { Request, Response } from 'express';
 import { OwnerService } from '../services/owner.service';
-import { z } from 'zod';
-
-const ownerService = new OwnerService();
-
-// Validation schemas
-const createOwnerSchema = z.object({
-  rut_propietario: z.number(),
-  run_propietario: z.string().min(1),
-  nombre_propietario: z.string().min(1),
-  apellido_propietario: z.string().min(1),
-  email_propietario: z.string().email(),
-  telefono_propietario: z.string().min(1),
-  direccion_propietario: z.string().min(1),
-  inserted_by: z.string().min(1),
-  inserted_at: z.string().min(1),
-  updated_at: z.string().min(1),
-  updated_by: z.string().min(1)
-});
-
-const updateOwnerSchema = z.object({
-  nombre_propietario: z.string().min(1).optional(),
-  apellido_propietario: z.string().min(1).optional(),
-  email_propietario: z.string().email().optional(),
-  telefono_propietario: z.string().min(1).optional(),
-  direccion_propietario: z.string().min(1).optional(),
-  updated_by: z.string().min(1)
-});
+import { Owner } from '../models/owner.model';
 
 export class OwnerController {
-  async createOwner(req: Request, res: Response) {
+  private ownerService: OwnerService;
+
+  constructor() {
+    this.ownerService = new OwnerService();
+  }
+
+  async getAllOwners(_req: Request, res: Response): Promise<void> {
     try {
-      const ownerData = createOwnerSchema.parse(req.body);
-      const owner = await ownerService.createOwner(ownerData);
-      res.status(201).json(owner);
+      const owners = await this.ownerService.getAllOwners();
+      res.json(owners);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: error.errors });
-        return;
-      }
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error in getAllOwners controller:', error);
+      res.status(500).json({ message: 'Error al obtener los propietarios' });
     }
   }
 
-  async getOwnerById(req: Request, res: Response) {
+  async getOwnerById(req: Request, res: Response): Promise<void> {
     try {
       const id = parseInt(req.params.id);
-      const owner = await ownerService.getOwnerById(id);
+      const owner = await this.ownerService.getOwnerById(id);
       
       if (!owner) {
-        res.status(404).json({ error: 'Owner not found' });
+        res.status(404).json({ message: 'Propietario no encontrado' });
         return;
       }
       
       res.json(owner);
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error in getOwnerById controller:', error);
+      res.status(500).json({ message: 'Error al obtener el propietario' });
     }
   }
 
-  async updateOwner(req: Request, res: Response) {
+  async createOwner(req: Request, res: Response): Promise<void> {
     try {
-      const id = parseInt(req.params.id);
-      const ownerData = updateOwnerSchema.parse(req.body);
-      const owner = await ownerService.updateOwner(id, ownerData);
-      
-      if (!owner) {
-        res.status(404).json({ error: 'Owner not found' });
-        return;
-      }
-      
-      res.json(owner);
+      const ownerData: Omit<Owner, 'id_propietario'> = {
+        rut_propietario: req.body.rut_propietario,
+        run_propietario: req.body.run_propietario,
+        nombre_propietario: req.body.nombre_propietario,
+        inserted_by: req.body.inserted_by,
+        inserted_at: new Date(),
+        updated_by: null,
+        updated_at: null,
+        ind_estado: 'A'
+      };
+
+      const newOwner = await this.ownerService.createOwner(ownerData);
+      res.status(201).json(newOwner);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: error.errors });
-        return;
-      }
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error in createOwner controller:', error);
+      res.status(500).json({ message: 'Error al crear el propietario' });
     }
   }
 
-  async deleteOwner(req: Request, res: Response) {
+  async updateOwner(req: Request, res: Response): Promise<void> {
     try {
       const id = parseInt(req.params.id);
-      const deleted = await ownerService.deleteOwner(id);
+      const ownerData: Partial<Owner> = {
+        rut_propietario: req.body.rut_propietario,
+        run_propietario: req.body.run_propietario,
+        nombre_propietario: req.body.nombre_propietario,
+        updated_by: req.body.updated_by,
+        updated_at: new Date(),
+        ind_estado: req.body.ind_estado
+      };
+
+      const updatedOwner = await this.ownerService.updateOwner(id, ownerData);
       
-      if (!deleted) {
-        res.status(404).json({ error: 'Owner not found' });
+      if (!updatedOwner) {
+        res.status(404).json({ message: 'Propietario no encontrado' });
         return;
       }
       
-      res.status(204).send();
+      res.json(updatedOwner);
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error in updateOwner controller:', error);
+      res.status(500).json({ message: 'Error al actualizar el propietario' });
+    }
+  }
+
+  async deleteOwner(req: Request, res: Response): Promise<void> {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await this.ownerService.deleteOwner(id);
+      
+      if (!success) {
+        res.status(404).json({ message: 'Propietario no encontrado' });
+        return;
+      }
+      
+      res.json({ message: 'Propietario marcado como inactivo correctamente' });
+    } catch (error) {
+      console.error('Error in deleteOwner controller:', error);
+      res.status(500).json({ message: 'Error al marcar el propietario como inactivo' });
     }
   }
 
@@ -104,7 +108,7 @@ export class OwnerController {
         return;
       }
 
-      const owners = await ownerService.searchOwners(searchTerm);
+      const owners = await this.ownerService.searchOwners(searchTerm);
       res.json(owners);
     } catch (error) {
       res.status(500).json({ error: 'Internal server error' });
@@ -114,7 +118,7 @@ export class OwnerController {
   async getOwnersByMembership(req: Request, res: Response) {
     try {
       const membershipId = parseInt(req.params.membershipId);
-      const owners = await ownerService.getOwnersByMembership(membershipId);
+      const owners = await this.ownerService.getOwnersByMembership(membershipId);
       res.json(owners);
     } catch (error) {
       res.status(500).json({ error: 'Internal server error' });

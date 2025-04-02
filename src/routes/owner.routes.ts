@@ -4,10 +4,19 @@ import { OwnerController } from '../controllers/owner.controller';
 const router = Router();
 const ownerController = new OwnerController();
 
-// Rutas públicas (sin autenticación)
+// Get all owners
+router.get('/', ownerController.getAllOwners.bind(ownerController));
+
+// Get owner by ID
 router.get('/:id', ownerController.getOwnerById.bind(ownerController));
+
+// Create new owner
 router.post('/', ownerController.createOwner.bind(ownerController));
+
+// Update owner
 router.put('/:id', ownerController.updateOwner.bind(ownerController));
+
+// Delete owner
 router.delete('/:id', ownerController.deleteOwner.bind(ownerController));
 
 /**

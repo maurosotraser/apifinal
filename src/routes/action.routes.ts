@@ -4,10 +4,140 @@ import { ActionController } from '../controllers/action.controller';
 const router = Router();
 const actionController = new ActionController();
 
-// Rutas públicas (sin autenticación)
+/**
+ * @swagger
+ * /api/actions:
+ *   get:
+ *     summary: Obtiene todas las acciones
+ *     tags: [Actions]
+ *     responses:
+ *       200:
+ *         description: Lista de acciones
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Action'
+ */
+router.get('/', actionController.getAllActions.bind(actionController));
+
+/**
+ * @swagger
+ * /api/actions/{id}:
+ *   get:
+ *     summary: Obtiene una acción por ID
+ *     tags: [Actions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Acción encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Action'
+ *       404:
+ *         description: Acción no encontrada
+ */
 router.get('/:id', actionController.getActionById.bind(actionController));
+
+/**
+ * @swagger
+ * /api/actions:
+ *   post:
+ *     summary: Crea una nueva acción
+ *     tags: [Actions]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nombre
+ *               - cod_tipo
+ *               - inserted_by
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *               cod_tipo:
+ *                 type: string
+ *               htmlcode:
+ *                 type: string
+ *               inserted_by:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Acción creada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Action'
+ */
 router.post('/', actionController.createAction.bind(actionController));
+
+/**
+ * @swagger
+ * /api/actions/{id}:
+ *   put:
+ *     summary: Actualiza una acción existente
+ *     tags: [Actions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *               cod_tipo:
+ *                 type: string
+ *               htmlcode:
+ *                 type: string
+ *               updated_by:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Acción actualizada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Action'
+ *       404:
+ *         description: Acción no encontrada
+ */
 router.put('/:id', actionController.updateAction.bind(actionController));
+
+/**
+ * @swagger
+ * /api/actions/{id}:
+ *   delete:
+ *     summary: Elimina una acción
+ *     tags: [Actions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Acción eliminada exitosamente
+ *       404:
+ *         description: Acción no encontrada
+ */
 router.delete('/:id', actionController.deleteAction.bind(actionController));
 
 /**

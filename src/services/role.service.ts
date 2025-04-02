@@ -1,128 +1,170 @@
-import { BaseService } from './base.service';
-import { Role, RoleSub } from '../types/models';
+import sql from 'mssql';
+import { Role } from '../models/role.model';
+import { pool } from '../config/database';
 
-export class RoleService extends BaseService {
-  async createRole(roleData: Omit<Role, 'id_rol' | 'inserted_at' | 'updated_at'>): Promise<Role> {
-    const query = `
-      INSERT INTO seguridad.roles (
-        nombre, inserted_by
-      )
-      OUTPUT INSERTED.*
-      VALUES (
-        @nombre, @inserted_by
-      )
-    `;
+export class RoleService {
+  private convertBufferToString(record: any): any {
+    if (record && record.nombre) {
+      if (record.nombre.type === 'Buffer') {
+        record.nombre = Buffer.from(record.nombre.data).toString('utf8');
+      } else if (Buffer.isBuffer(record.nombre)) {
+        record.nombre = record.nombre.toString('utf8');
+      }
+    }
+    return record;
+  }
 
-    const result = await this.executeQuery<Role>(query, {
-      nombre: roleData.nombre,
-      inserted_by: roleData.inserted_by
-    });
-
-    return result[0];
+  async getAllRoles(): Promise<Role[]> {
+    try {
+      const result = await pool.request()
+        .query('SELECT * FROM [sotraser-bd-dev].seguridad.roles');
+      return result.recordset.map(record => this.convertBufferToString(record));
+    } catch (error) {
+      console.error('Error in getAllRoles:', error);
+      throw error;
+    }
   }
 
   async getRoleById(id: number): Promise<Role | null> {
-    const query = `
-      SELECT * FROM seguridad.roles
-      WHERE id_rol = @id AND (deleted IS NULL OR deleted = 0)
-    `;
+    try {
+      const result = await pool.request()
+        .input('id', sql.Int, id)
+        .query('SELECT * FROM [sotraser-bd-dev].seguridad.roles WHERE id_rol = @id');
+      
+      const role = result.recordset[0];
+      return role ? this.convertBufferToString(role) : null;
+    } catch (error) {
+      console.error('Error in getRoleById:', error);
+      throw error;
+    }
+  }
 
-    const result = await this.executeQuery<Role>(query, { id });
-    return result[0] || null;
+  async createRole(roleData: Omit<Role, 'id_rol'>): Promise<Role> {
+    try {
+      const result = await pool.request()
+        .input('nombre', sql.VarBinary(50), Buffer.from(roleData.nombre))
+        .input('inserted_by', sql.VarChar(50), roleData.inserted_by)
+        .input('inserted_at', sql.DateTime, new Date())
+        .input('updated_by', sql.VarChar(50), null)
+        .input('updated_at', sql.DateTime, null)
+        .query(`
+          INSERT INTO [sotraser-bd-dev].seguridad.roles
+          (nombre, inserted_by, inserted_at, updated_by, updated_at)
+          OUTPUT INSERTED.*
+          VALUES
+          (@nombre, @inserted_by, @inserted_at, @updated_by, @updated_at)
+        `);
+      
+      return this.convertBufferToString(result.recordset[0]);
+    } catch (error) {
+      console.error('Error in createRole:', error);
+      throw error;
+    }
   }
 
   async updateRole(id: number, roleData: Partial<Role>): Promise<Role | null> {
-    const query = `
-      UPDATE seguridad.roles
-      SET 
-        nombre = COALESCE(@nombre, nombre),
-        updated_by = @updated_by,
-        updated_at = GETDATE()
-      OUTPUT INSERTED.*
-      WHERE id_rol = @id
-    `;
+    try {
+      let updateQuery = 'UPDATE [sotraser-bd-dev].seguridad.roles SET ';
+      const inputs: any[] = [];
+      const values: any[] = [];
 
-    const result = await this.executeQuery<Role>(query, {
-      id,
-      ...roleData,
-      updated_by: roleData.updated_by || 'system'
-    });
+      if (roleData.nombre !== undefined) {
+        inputs.push('nombre');
+        values.push(Buffer.from(roleData.nombre));
+      }
 
-    return result[0] || null;
+      if (roleData.updated_by !== undefined) {
+        inputs.push('updated_by');
+        values.push(roleData.updated_by);
+      }
+
+      if (roleData.updated_at !== undefined) {
+        inputs.push('updated_at');
+        values.push(roleData.updated_at);
+      }
+
+      if (inputs.length === 0) {
+        return null;
+      }
+
+      const request = pool.request();
+      request.input('id', sql.Int, id);
+
+      inputs.forEach((input, index) => {
+        updateQuery += `${input} = @${input}, `;
+        if (input === 'updated_at') {
+          request.input(input, sql.DateTime, values[index]);
+        } else if (input === 'nombre') {
+          request.input(input, sql.VarBinary(50), values[index]);
+        } else {
+          request.input(input, sql.VarChar(50), values[index]);
+        }
+      });
+
+      updateQuery = updateQuery.slice(0, -2) + ' WHERE id_rol = @id';
+
+      const result = await request.query(updateQuery);
+
+      if (result.rowsAffected[0] === 0) {
+        return null;
+      }
+
+      return this.getRoleById(id);
+    } catch (error) {
+      console.error('Error in updateRole:', error);
+      throw error;
+    }
   }
 
   async deleteRole(id: number): Promise<boolean> {
-    const query = `
-      UPDATE seguridad.roles
-      SET 
-        deleted = 1,
-        updated_at = GETDATE(),
-        updated_by = 'system'
-      WHERE id_rol = @id
-    `;
-
-    const result = await this.executeQuery<{ affectedRows: number }>(query, { id });
-    return result[0]?.affectedRows > 0;
+    try {
+      const result = await pool.request()
+        .input('id', sql.Int, id)
+        .query('DELETE FROM [sotraser-bd-dev].seguridad.roles WHERE id_rol = @id');
+      
+      return result.rowsAffected[0] > 0;
+    } catch (error) {
+      console.error('Error in deleteRole:', error);
+      throw error;
+    }
   }
 
-  async getRoleSubs(roleId: number): Promise<RoleSub[]> {
-    const query = `
-      SELECT * FROM seguridad.roles_sub
-      WHERE id_rol = @roleId AND (deleted IS NULL OR deleted = 0)
-    `;
-
-    return this.executeQuery<RoleSub>(query, { roleId });
+  async getRoleSubs(roleId: number): Promise<any[]> {
+    try {
+      const result = await pool.request()
+        .input('roleId', sql.Int, roleId)
+        .query(`
+          SELECT * FROM [sotraser-bd-dev].seguridad.roles_sub 
+          WHERE id_rol = @roleId
+        `);
+      return result.recordset;
+    } catch (error) {
+      console.error('Error in getRoleSubs:', error);
+      throw error;
+    }
   }
 
-  async addRoleSub(roleSubData: Omit<RoleSub, 'id_rol_sub' | 'inserted_at' | 'updated_at'>): Promise<RoleSub> {
-    const query = `
-      INSERT INTO seguridad.roles_sub (
-        id_rol, id_accion, can_salect, can_insert, can_update, can_delete, inserted_by
-      )
-      OUTPUT INSERTED.*
-      VALUES (
-        @id_rol, @id_accion, @can_salect, @can_insert, @can_update, @can_delete, @inserted_by
-      )
-    `;
-
-    const result = await this.executeQuery<RoleSub>(query, roleSubData);
-    return result[0];
-  }
-
-  async updateRoleSub(id: number, roleSubData: Partial<RoleSub>): Promise<RoleSub | null> {
-    const query = `
-      UPDATE seguridad.roles_sub
-      SET 
-        can_salect = COALESCE(@can_salect, can_salect),
-        can_insert = COALESCE(@can_insert, can_insert),
-        can_update = COALESCE(@can_update, can_update),
-        can_delete = COALESCE(@can_delete, can_delete),
-        updated_by = @updated_by,
-        updated_at = GETDATE()
-      OUTPUT INSERTED.*
-      WHERE id_rol_sub = @id
-    `;
-
-    const result = await this.executeQuery<RoleSub>(query, {
-      id,
-      ...roleSubData,
-      updated_by: roleSubData.updated_by || 'system'
-    });
-
-    return result[0] || null;
-  }
-
-  async deleteRoleSub(id: number): Promise<boolean> {
-    const query = `
-      UPDATE seguridad.roles_sub
-      SET 
-        deleted = 1,
-        updated_at = GETDATE(),
-        updated_by = 'system'
-      WHERE id_rol_sub = @id
-    `;
-
-    const result = await this.executeQuery<{ affectedRows: number }>(query, { id });
-    return result[0]?.affectedRows > 0;
+  async addRoleSub(roleId: number, id_accion: number, can_salect: string, can_insert: string, can_update: string, can_delete: string, inserted_by: string): Promise<boolean> {
+    try {
+      const result = await pool.request()
+        .input('roleId', sql.Int, roleId)
+        .input('id_accion', sql.Int, id_accion)
+        .input('can_salect', sql.VarChar(1), can_salect)
+        .input('can_insert', sql.VarChar(1), can_insert)
+        .input('can_update', sql.VarChar(1), can_update)
+        .input('can_delete', sql.VarChar(1), can_delete)
+        .input('inserted_by', sql.VarChar(50), inserted_by)
+        .query(`
+          INSERT INTO [sotraser-bd-dev].seguridad.roles_sub
+          (id_rol, id_accion, can_salect, can_insert, can_update, can_delete, inserted_by, inserted_at)
+          VALUES
+          (@roleId, @id_accion, @can_salect, @can_insert, @can_update, @can_delete, @inserted_by, GETDATE())
+        `);
+      
+      return result.rowsAffected[0] > 0;
+    } catch (error) {
+      console.error('Error in addRoleSub:', error);
+      throw error;
+    }
   }
 } 
