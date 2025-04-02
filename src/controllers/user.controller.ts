@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { UserService } from '../services/user.service';
+import { User } from '../models/user.model';
 import { z } from 'zod';
 
 const userService = new UserService();
@@ -10,10 +11,9 @@ const createUserSchema = z.object({
   password: z.string().min(6),
   nombre_usuario: z.string().min(1),
   correo: z.string().email(),
-  telefono: z.string().nullable(),
-  ind_estado: z.enum(['A', 'B']),
-  inserted_by: z.string().min(1),
-  ultimo_acceso: z.string().datetime().transform(str => new Date(str))
+  telefono: z.string().optional(),
+  ind_estado: z.enum(['S', 'N', 'B']).default('S'),
+  inserted_by: z.string().optional()
 });
 
 const updateUserSchema = z.object({
@@ -21,9 +21,10 @@ const updateUserSchema = z.object({
   password: z.string().min(6).optional(),
   nombre_usuario: z.string().min(1).optional(),
   correo: z.string().email().optional(),
-  telefono: z.string().nullable().optional(),
-  ind_estado: z.enum(['A', 'B']).optional(),
-  updated_by: z.string().min(1)
+  telefono: z.string().optional(),
+  ind_estado: z.enum(['S', 'N', 'B']).optional(),
+  updated_by: z.string().min(1),
+  updated_at: z.string().datetime().transform(str => new Date(str))
 });
 
 export class UserController {
@@ -55,11 +56,17 @@ export class UserController {
       }
 
       const userData = createUserSchema.parse(req.body);
-      const userToCreate = {
-        ...userData,
+      const userToCreate: Omit<User, 'id_usuario'> = {
+        username: userData.username,
+        hash_password: userData.password,
+        nombre_usuario: userData.nombre_usuario,
+        correo: userData.correo,
+        telefono: userData.telefono || '',
+        ind_estado: userData.ind_estado,
+        inserted_by: userData.inserted_by || 'system',
         inserted_at: new Date(),
-        updated_at: new Date(),
-        updated_by: userData.inserted_by
+        updated_by: null,
+        updated_at: null
       };
       const user = await userService.createUser(userToCreate);
       res.status(201).json({
@@ -139,7 +146,18 @@ export class UserController {
       }
 
       const userData = updateUserSchema.parse(req.body);
-      const user = await userService.updateUser(id, userData);
+      const updateData: Partial<User> = {};
+      
+      if (userData.username) updateData.username = userData.username;
+      if (userData.password) updateData.hash_password = userData.password;
+      if (userData.nombre_usuario) updateData.nombre_usuario = userData.nombre_usuario;
+      if (userData.correo) updateData.correo = userData.correo;
+      if (userData.telefono !== undefined) updateData.telefono = userData.telefono;
+      if (userData.ind_estado) updateData.ind_estado = userData.ind_estado;
+      if (userData.updated_by) updateData.updated_by = userData.updated_by;
+      if (userData.updated_at) updateData.updated_at = userData.updated_at;
+      
+      const user = await userService.updateUser(id, updateData);
       
       if (!user) {
         res.status(404).json({

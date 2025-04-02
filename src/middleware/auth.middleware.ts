@@ -41,7 +41,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     req.user = {
       id_usuario: user.id_usuario,
       username: user.username,
-      roles: user.roles || []
+      
     };
 
     return next();
@@ -63,4 +63,4 @@ export const checkRole = (roles: string[]) => {
 
     return next();
   };
-}; 
+};

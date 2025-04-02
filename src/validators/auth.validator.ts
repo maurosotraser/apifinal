@@ -5,7 +5,9 @@ const registerSchema = z.object({
   password: z.string().min(6),
   nombre_usuario: z.string().min(3).max(100),
   correo: z.string().email(),
-  ind_estado: z.enum(['A', 'B']).default('A')
+  telefono: z.string().optional(),
+  ind_estado: z.enum(['S', 'N', 'B']).default('S'),
+  inserted_by: z.string().optional()
 });
 
 const loginSchema = z.object({
@@ -19,4 +21,4 @@ export const validateRegistration = (data: unknown) => {
 
 export const validateLogin = (data: unknown) => {
   return loginSchema.parse(data);
-}; 
+};

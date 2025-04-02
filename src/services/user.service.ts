@@ -1,5 +1,5 @@
 import sql from 'mssql';
-import { User } from '../types/user.types';
+import { User } from '../models/user.model';
 import { pool } from '../config/database';
 import bcrypt from 'bcryptjs';
 
@@ -43,14 +43,12 @@ export class UserService {
 
   async createUser(userData: Omit<User, 'id_usuario'>): Promise<User> {
     try {
-      const hashedPassword = await this.hashPassword(userData.password);
       const result = await pool.request()
         .input('username', sql.NVarChar, userData.username)
-        .input('hash_password', sql.NVarChar, hashedPassword)
+        .input('hash_password', sql.NVarChar, userData.hash_password)
         .input('nombre_usuario', sql.NVarChar, userData.nombre_usuario)
         .input('correo', sql.NVarChar, userData.correo)
         .input('telefono', sql.NVarChar, userData.telefono)
-        .input('ultimo_acceso', sql.DateTime, userData.ultimo_acceso)
         .input('ind_estado', sql.Char(1), userData.ind_estado)
         .input('inserted_by', sql.NVarChar, userData.inserted_by)
         .input('inserted_at', sql.DateTime, userData.inserted_at)
@@ -58,10 +56,10 @@ export class UserService {
         .input('updated_at', sql.DateTime, userData.updated_at)
         .query(`
           INSERT INTO [sotraser-bd-dev].seguridad.usuarios
-          (id_usuario, username, hash_password, nombre_usuario, correo, telefono, ultimo_acceso, ind_estado, inserted_by, inserted_at, updated_by, updated_at)
+          (id_usuario, username, hash_password, nombre_usuario, correo, telefono, ind_estado, inserted_by, inserted_at, updated_by, updated_at)
           OUTPUT INSERTED.*
           VALUES
-          (NEXT VALUE FOR [sotraser-bd-dev].seguridad.SQ_USUARIOS, @username, @hash_password, @nombre_usuario, @correo, @telefono, @ultimo_acceso, @ind_estado, @inserted_by, @inserted_at, @updated_by, @updated_at)
+          (NEXT VALUE FOR [sotraser-bd-dev].seguridad.SQ_USUARIOS, @username, @hash_password, @nombre_usuario, @correo, @telefono, @ind_estado, @inserted_by, @inserted_at, @updated_by, @updated_at)
         `);
       
       return result.recordset[0];
@@ -82,10 +80,9 @@ export class UserService {
         values.push(userData.username);
       }
 
-      if (userData.password) {
-        const hashedPassword = await this.hashPassword(userData.password);
+      if (userData.hash_password) {
         inputs.push('hash_password');
-        values.push(hashedPassword);
+        values.push(userData.hash_password);
       }
 
       if (userData.nombre_usuario) {
@@ -127,7 +124,11 @@ export class UserService {
 
       inputs.forEach((input, index) => {
         updateQuery += `${input} = @${input}, `;
-        request.input(input, sql.NVarChar, values[index]);
+        if (input === 'updated_at') {
+          request.input(input, sql.DateTime, values[index]);
+        } else {
+          request.input(input, sql.NVarChar, values[index]);
+        }
       });
 
       updateQuery = updateQuery.slice(0, -2) + ' WHERE id_usuario = @id';
@@ -149,7 +150,13 @@ export class UserService {
     try {
       const result = await pool.request()
         .input('id', sql.Int, id)
-        .query('DELETE FROM [sotraser-bd-dev].seguridad.usuarios WHERE id_usuario = @id');
+        .query(`
+          UPDATE [sotraser-bd-dev].seguridad.usuarios
+          SET ind_estado = 'B',
+              updated_by = 'system',
+              updated_at = GETDATE()
+          WHERE id_usuario = @id
+        `);
       
       return result.rowsAffected[0] > 0;
     } catch (error) {
@@ -159,45 +166,11 @@ export class UserService {
   }
 
   async validatePassword(user: User, password: string): Promise<boolean> {
-    return bcrypt.compare(password, user.password);
+    return bcrypt.compare(password, user.hash_password);
   }
 
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
   }
-
-  async updateLastAccess(id: number): Promise<void> {
-    try {
-      const request = pool.request();
-      await request
-        .input('id', id)
-        .query('UPDATE [sotraser-bd-dev].seguridad.usuarios SET ultimo_acceso = GETDATE() WHERE id_usuario = @id');
-    } catch (error) {
-      console.error('Error in updateLastAccess:', error);
-      throw error;
-    }
-  }
-
-  async getUserRoles(userId: number): Promise<string[]> {
-    try {
-      const result = await pool.request()
-        .input('userId', sql.Int, userId)
-        .query(`
-          SELECT r.nombre
-          FROM roles r
-          INNER JOIN usuarios_roles ur ON r.id_rol = ur.id_rol
-          WHERE ur.id_usuario = @userId
-        `);
-      
-      return result.recordset.map(row => row.nombre);
-    } catch (error) {
-      console.error('Error in getUserRoles:', error);
-      // Si la tabla no existe, devolver un array vacío
-      if (error instanceof Error && error.message.includes('Invalid object name')) {
-        return [];
-      }
-      throw error;
-    }
-  }
-} 
+}
 

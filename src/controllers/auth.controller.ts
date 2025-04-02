@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
-import { User } from '../types/user.types';
+import { User } from '../models/user.model';
 import { validateRegistration, validateLogin } from '../validators/auth.validator';
 
 export class AuthController {
@@ -14,13 +14,16 @@ export class AuthController {
     try {
       const validatedData = validateRegistration(req.body);
       const userData: Omit<User, 'id_usuario'> = {
-        ...validatedData,
-        telefono: '',
-        inserted_by: 'system',
+        username: validatedData.username,
+        hash_password: validatedData.password,
+        nombre_usuario: validatedData.nombre_usuario,
+        correo: validatedData.correo,
+        telefono: validatedData.telefono || '',
+        ind_estado: validatedData.ind_estado,
+        inserted_by: validatedData.inserted_by || 'system',
         inserted_at: new Date(),
-        updated_by: 'system',
-        updated_at: new Date(),
-        ultimo_acceso: new Date()
+        updated_by: null,
+        updated_at: null
       };
       
       const user = await this.authService.register(userData);
@@ -39,7 +42,7 @@ export class AuthController {
   async login(req: Request, res: Response): Promise<Response> {
     try {
       const validatedData = validateLogin(req.body);
-      const { token, user } = await this.authService.login(validatedData);
+      const { token, user } = await this.authService.login(validatedData.username, validatedData.password);
       return res.json({ token, user });
     } catch (error) {
       if (error instanceof Error) {
