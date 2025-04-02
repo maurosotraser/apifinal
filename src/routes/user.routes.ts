@@ -7,6 +7,26 @@ const userController = new UserController();
 /**
  * @swagger
  * /api/users:
+ *   get:
+ *     summary: Get all users
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/', userController.getAllUsers.bind(userController));
+
+/**
+ * @swagger
+ * /api/users:
  *   post:
  *     summary: Create a new user
  *     tags: [Users]

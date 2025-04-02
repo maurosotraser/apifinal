@@ -2,69 +2,65 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserService } from '../services/user.service';
 
-const userService = new UserService();
+interface JwtPayload {
+  id: number;
+  username: string;
+}
 
 declare global {
   namespace Express {
     interface Request {
       user?: {
-        id: number;
+        id_usuario: number;
         username: string;
-        roles: string[];
+        roles?: string[];
       };
     }
   }
 }
 
-export const authenticateToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    res.status(401).json({ error: 'Access token required' });
-    return;
-  }
-
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as {
-      userId: number;
-      username: string;
-    };
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-    const userRoles = await userService.getUserRoles(user.userId);
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const secretKey = process.env.JWT_SECRET || 'your-secret-key';
+    const decoded = jwt.verify(token, secretKey) as JwtPayload;
+
+    const userService = new UserService();
+    const user = await userService.getUserById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
 
     req.user = {
-      id: user.userId,
+      id_usuario: user.id_usuario,
       username: user.username,
-      roles: userRoles
+      roles: user.roles || []
     };
 
-    next();
+    return next();
   } catch (error) {
-    res.status(403).json({ error: 'Invalid or expired token' });
-    return;
+    return res.status(401).json({ message: 'Invalid token' });
   }
 };
 
 export const checkRole = (roles: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      if (!req.user) {
-        res.status(401).json({ error: 'Authentication required' });
-        return;
-      }
-
-      const hasRole = roles.some(role => req.user!.roles.includes(role));
-
-      if (!hasRole) {
-        res.status(403).json({ error: 'Insufficient permissions' });
-        return;
-      }
-
-      next();
-    } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
-      return;
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
     }
+
+    const hasRole = roles.some(role => req.user?.roles?.includes(role));
+    if (!hasRole) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    return next();
   };
 }; 

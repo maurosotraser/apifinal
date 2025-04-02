@@ -66,7 +66,6 @@ router.post('/login', authController.login.bind(authController));
  *               - password
  *               - nombre_usuario
  *               - correo
- *               - inserted_by
  *             properties:
  *               username:
  *                 type: string
@@ -81,13 +80,11 @@ router.post('/login', authController.login.bind(authController));
  *                 type: string
  *                 format: email
  *                 description: User's email
- *               telefono:
+ *               ind_estado:
  *                 type: string
- *                 nullable: true
- *                 description: User's phone number
- *               inserted_by:
- *                 type: string
- *                 description: Username of the user creating the account
+ *                 enum: [A, B]
+ *                 default: A
+ *                 description: User's status
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -125,57 +122,5 @@ router.post('/register', authController.register.bind(authController));
  *         description: Internal server error
  */
 router.get('/me', authenticateToken, authController.getCurrentUser.bind(authController));
-
-/**
- * @swagger
- * /api/auth/refresh-token:
- *   post:
- *     summary: Refresh access token
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: New access token
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                   description: New JWT access token
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Internal server error
- */
-router.post('/refresh-token', authenticateToken, authController.refreshToken.bind(authController));
-
-/**
- * @swagger
- * /api/auth/logout:
- *   post:
- *     summary: Logout user
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Logout successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   description: Success message
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Internal server error
- */
-router.post('/logout', authenticateToken, authController.logout.bind(authController));
 
 export default router; 

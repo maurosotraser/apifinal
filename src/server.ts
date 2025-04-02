@@ -1,11 +1,11 @@
-import app from './app';
+import { app } from './app';
 import { config } from './config/app';
-import { db } from './config/database';
+import { pool } from './config/database';
 
 const startServer = async () => {
   try {
     // Test database connection
-    await db.getConnection();
+    await pool.connect();
     console.log('Database connection successful');
 
     // Start server
